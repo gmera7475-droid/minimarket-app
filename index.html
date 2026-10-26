@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Minimarket - Sistema de Gestión</title>
+  <!-- Tailwind CSS por CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SDK oficial de Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <!-- Barra de Navegación -->
+  <nav class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
+    <h1 class="text-xl font-bold">🛒 Minimarket App</h1>
+    <div class="space-x-4">
+      <button onclick="switchTab('pos')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Punto de Venta (POS)</button>
+      <button onclick="switchTab('inventory')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Inventario</button>
+      <button onclick="switchTab('dashboard')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Finanzas</button>
+      <button onclick="switchTab('admin')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Administración</button>
+    </div>
+  </nav>
+
+  <!-- Contenedor Principal -->
+  <main class="p-6 max-w-7xl mx-auto">
+    
+    <!-- SECCIÓN 1: POS / PUNTO DE VENTA -->
+    <section id="sec-pos" class="tab-content">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">Punto de Venta</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Lista de Productos Disponibles -->
+        <div class="md:col-span-2 bg-white p-4 rounded-lg shadow">
+          <h3 class="font-semibold text-lg mb-3 text-gray-700">Catálogo de Productos</h3>
+          <div id="product-list" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <!-- Los productos se cargarán aquí con JavaScript -->
+            <p class="text-gray-500 text-sm">Cargando productos...</p>
+          </div>
+        </div>
+        <!-- Carrito de Compras -->
+        <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+          <div>
+            <h3 class="font-semibold text-lg mb-3 text-gray-700">Carrito Actual</h3>
+            <div id="cart-items" class="space-y-2 max-h-60 overflow-y-auto mb-4 border-b pb-2">
+              <p class="text-gray-400 text-sm">El carrito está vacío</p>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between font-bold text-lg mb-4">
+              <span>Total:</span>
+              <span id="cart-total">$0.00</span>
+            </div>
+            <button onclick="checkout()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
+              Cobrar Venta
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: INVENTARIO -->
+    <section id="sec-inventory" class="tab-content hidden">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">Gestión de Inventario</h2>
+      <div class="bg-white p-4 rounded-lg shadow overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b bg-gray-50 text-gray-600 text-sm">
+              <th class="p-3">Código</th>
+              <th class="p-3">Producto</th>
+              <th class="p-3">Categoría</th>
+              <th class="p-3">Costo</th>
+              <th class="p-3">Precio Venta</th>
+              <th class="p-3">Stock Actual</th>
+              <th class="p-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-table-body">
+            <!-- Datos cargados desde Supabase -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECCIÓN DE ADMINISTRACIÓN Y REGISTROS -->
+    <section id="sec-admin" class="tab-content hidden">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">Panel de Administración y Movimientos</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- 1. Formulario Nuevo Producto -->
+        <div class="bg-white p-5 rounded-lg shadow">
+          <h3 class="font-semibold text-lg mb-3 text-gray-700 border-b pb-2">➕ Registrar Nuevo Producto</h3>
+          <form onsubmit="handleCreateProduct(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Código o ID (ej. PROD-002)</label>
+              <input type="text" id="prod-id" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del Producto</label>
+              <input type="text" id="prod-nombre" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Costo Compra ($)</label>
+                <input type="number" step="0.01" id="prod-costo" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Precio Venta ($)</label>
+                <input type="number" step="0.01" id="prod-precio" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Stock Inicial</label>
+                <input type="number" id="prod-stock" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" value="0">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Stock Mínimo</label>
+                <input type="number" id="prod-minimo" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" value="5">
+              </div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-sm transition">Guardar Producto</button>
+          </form>
+        </div>
+
+        <!-- 2. Formulario Registrar Compra (Entrada Stock) -->
+        <div class="bg-white p-5 rounded-lg shadow">
+          <h3 class="font-semibold text-lg mb-3 text-gray-700 border-b pb-2">📦 Registrar Compra (Stock)</h3>
+          <form onsubmit="handleCreatePurchase(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Seleccionar Producto</label>
+              <select id="compra-producto" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                <option value="">Cargando productos...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Proveedor</label>
+              <input type="text" id="compra-proveedor" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre distribuidora">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Cantidad Comprada</label>
+                <input type="number" id="compra-cantidad" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" min="1">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Costo Unitario ($)</label>
+                <input type="number" step="0.01" id="compra-costo" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+            </div>
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded text-sm transition">Registrar Entrada</button>
+          </form>
+        </div>
+
+        <!-- 3. Formulario Registrar Gasto o Merma -->
+        <div class="bg-white p-5 rounded-lg shadow">
+          <h3 class="font-semibold text-lg mb-3 text-gray-700 border-b pb-2">📉 Registrar Gasto / Merma</h3>
+          <form onsubmit="handleCreateExpense(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Egreso</label>
+              <select id="gasto-tipo" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                <option value="Gasto Operativo">Gasto Operativo (Luz, Alquiler, etc.)</option>
+                <option value="Merma">Merma (Vencido / Dañado)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Concepto / Descripción</label>
+              <input type="text" id="gasto-concepto" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. Pago de servicio eléctrico">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Monto Total ($)</label>
+              <input type="number" step="0.01" id="gasto-monto" required class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded text-sm transition">Registrar Egreso</button>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECCIÓN 3: FINANZAS -->
+    <section id="sec-dashboard" class="tab-content hidden">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">Resumen Financiero y Resultados</h2>
+      
+      <!-- Tarjeta Destacada: Ganancia/Pérdida Neta del Periodo -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-xl shadow-lg mb-6 flex justify-between items-center">
+        <div>
+          <p class="text-sm uppercase tracking-wider opacity-80">Utilidad Neta (Ganancia Real)</p>
+          <p id="kpi-ganancia-neta" class="text-3xl font-extrabold mt-1">$0.00</p>
+          <p class="text-xs opacity-75 mt-1">Calculado: Ventas Totales menos Costos (COGS) y Gastos.</p>
+        </div>
+        <div class="text-right">
+          <span id="kpi-badge-estado" class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">Cargando...</span>
+        </div>
+      </div>
+
+      <!-- Tarjetas KPIs Secundarias -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+          <p class="text-sm text-gray-500 font-medium">Ingresos Brutos (Ventas)</p>
+          <p id="kpi-ingresos" class="text-xl font-bold text-gray-800">$0.00</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+          <p class="text-sm text-gray-500 font-medium">Costos y Gastos Totales</p>
+          <p id="kpi-costos-gastos" class="text-xl font-bold text-gray-800">$0.00</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+          <p class="text-sm text-gray-500 font-medium">Valor del Inventario en Stock</p>
+          <p id="kpi-inventario" class="text-xl font-bold text-gray-800">$0.00</p>
+        </div>
+      </div>
+
+      <!-- Gráfico de Comparativa Mensual -->
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="font-semibold text-lg mb-4 text-gray-700">Comparativa Mensual: Ingresos vs Costos y Gastos</h3>
+        <div class="h-80 relative">
+          <canvas id="financialChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Enlace al archivo JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
