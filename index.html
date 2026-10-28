@@ -195,44 +195,83 @@
     </section>
 
     <!-- SECCIÓN 3: FINANZAS -->
-    <section id="sec-dashboard" class="tab-content hidden">
-      <h2 class="text-2xl font-bold mb-4 text-gray-800">Resumen Financiero y Resultados</h2>
+    <!-- SECCIÓN 3: FINANZAS Y REPORTES -->
+    <section id="sec-dashboard" class="tab-content hidden space-y-6">
       
-      <!-- Tarjeta Destacada: Ganancia/Pérdida Neta del Periodo -->
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-xl shadow-lg mb-6 flex justify-between items-center">
+      <!-- Encabezado y Filtro por Fechas -->
+      <div class="bg-white p-4 rounded-xl shadow flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <p class="text-sm uppercase tracking-wider opacity-80">Utilidad Neta (Ganancia Real)</p>
-          <p id="kpi-ganancia-neta" class="text-3xl font-extrabold mt-1">$0.00</p>
-          <p class="text-xs opacity-75 mt-1">Calculado: Ventas Totales menos Costos (COGS) y Gastos.</p>
+          <h2 class="text-xl font-bold text-gray-800">📊 Resultados Financieros</h2>
+          <p class="text-xs text-gray-500">Consulta el rendimiento diario o filtra por periodo histórico</p>
         </div>
-        <div class="text-right">
-          <span id="kpi-badge-estado" class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold">Cargando...</span>
-        </div>
-      </div>
-
-      <!-- Tarjetas KPIs Secundarias -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-          <p class="text-sm text-gray-500 font-medium">Ingresos Brutos (Ventas)</p>
-          <p id="kpi-ingresos" class="text-xl font-bold text-gray-800">$0.00</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-          <p class="text-sm text-gray-500 font-medium">Costos y Gastos Totales</p>
-          <p id="kpi-costos-gastos" class="text-xl font-bold text-gray-800">$0.00</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-          <p class="text-sm text-gray-500 font-medium">Valor del Inventario en Stock</p>
-          <p id="kpi-inventario" class="text-xl font-bold text-gray-800">$0.00</p>
+        
+        <!-- Filtros de Fecha -->
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-gray-500">Desde</label>
+            <input type="date" id="filter-date-from" class="border p-1.5 rounded text-xs outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-gray-500">Hasta</label>
+            <input type="date" id="filter-date-to" class="border p-1.5 rounded text-xs outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="flex items-end space-x-1 mt-3 md:mt-0">
+            <button onclick="applyDateFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">Filtrar</button>
+            <button onclick="resetDateFilter()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-semibold transition">Hoy</button>
+          </div>
         </div>
       </div>
 
-      <!-- Gráfico de Comparativa Mensual -->
-      <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="font-semibold text-lg mb-4 text-gray-700">Comparativa Mensual: Ingresos vs Costos y Gastos</h3>
-        <div class="h-80 relative">
+      <!-- RECUADROS DEL DÍA DE HOY (RESUMEN DIARIO) -->
+      <div>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">📍 Movimientos del Día de Hoy</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg">
+            <p class="text-xs text-emerald-700 font-semibold">Ventas de Hoy</p>
+            <p id="kpi-today-sales" class="text-xl font-extrabold text-emerald-900">$0.00</p>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 p-3 rounded-lg">
+            <p class="text-xs text-rose-700 font-semibold">Costo de Ventas de Hoy</p>
+            <p id="kpi-today-cogs" class="text-xl font-extrabold text-rose-900">$0.00</p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+            <p class="text-xs text-amber-700 font-semibold">Gastos / Mermas de Hoy</p>
+            <p id="kpi-today-expenses" class="text-xl font-extrabold text-amber-900">$0.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTADOS ACUMULADOS / PERIODO FILTRADO -->
+      <div>
+        <h3 id="period-title" class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">📈 Acumulado del Periodo / Histórico</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="bg-white p-3 rounded-lg shadow border-l-4 border-blue-500">
+            <p class="text-xs text-gray-500 font-medium">Ingresos (Ventas)</p>
+            <p id="kpi-ingresos" class="text-lg font-bold text-gray-800">$0.00</p>
+          </div>
+          <div class="bg-white p-3 rounded-lg shadow border-l-4 border-red-500">
+            <p class="text-xs text-gray-500 font-medium">Costos + Gastos</p>
+            <p id="kpi-costos-gastos" class="text-lg font-bold text-gray-800">$0.00</p>
+          </div>
+          <div class="bg-white p-3 rounded-lg shadow border-l-4 border-indigo-500">
+            <p class="text-xs text-gray-500 font-medium">Ganancia Neta</p>
+            <p id="kpi-ganancia-neta" class="text-lg font-bold text-gray-800">$0.00</p>
+          </div>
+          <div class="bg-white p-3 rounded-lg shadow border-l-4 border-green-500">
+            <p class="text-xs text-gray-500 font-medium">Valor Inventario</p>
+            <p id="kpi-inventario" class="text-lg font-bold text-gray-800">$0.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRÁFICO COMPACTO -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="font-semibold text-sm mb-2 text-gray-700">Comparativa del Periodo Consulta</h3>
+        <div class="h-56 relative">
           <canvas id="financialChart"></canvas>
         </div>
       </div>
+
     </section>
 
   </main>
