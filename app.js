@@ -202,83 +202,121 @@ async function loadInventoryTable() {
 // --- CARGAR RESUMEN FINANCIERO ---
 let financialChartInstance = null;
 
-async function loadFinancialSummary() {
-  // 1. Obtener Ingresos Brutos (Ventas)
-  const { data: ventas } = await db.from('ventas').select('total_venta');
+// Cargar Métricas Financieras (con soporte para rango de fechas)
+async function loadFinancialSummary(startDate = null, endDate = null) {
+  // Configurar fecha de "Hoy" en formato ISO (YYYY-MM-DD)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStart = `${todayStr}T00:00:00.000Z`;
+  const todayEnd = `${todayStr}T23:59:59.999Z`;
+
+  // --- 1. MOVIMIENTOS DEL DÍA DE HOY ---
+  const { data: salesToday } = await db.from('ventas')
+    .select('total_venta')
+    .gte('fecha_hora', todayStart)
+    .lte('fecha_hora', todayEnd);
+  const todaySales = salesToday ? salesToday.reduce((acc, v) => acc + Number(v.total_venta), 0) : 0;
+
+  const { data: detailsToday } = await db.from('detalle_ventas')
+    .select('cantidad, costo_unitario, ventas!inner(fecha_hora)')
+    .gte('ventas.fecha_hora', todayStart)
+    .lte('ventas.fecha_hora', todayEnd);
+  const todayCogs = detailsToday ? detailsToday.reduce((acc, d) => acc + (d.cantidad * Number(d.costo_unitario)), 0) : 0;
+
+  const { data: expensesToday } = await db.from('gastos_y_mermas')
+    .select('monto_total')
+    .gte('fecha', todayStart)
+    .lte('fecha', todayEnd);
+  const todayExpenses = expensesToday ? expensesToday.reduce((acc, g) => acc + Number(g.monto_total), 0) : 0;
+
+  // Actualizar KPIs de Hoy
+  document.getElementById('kpi-today-sales').innerText = `$${todaySales.toFixed(2)}`;
+  document.getElementById('kpi-today-cogs').innerText = `$${todayCogs.toFixed(2)}`;
+  document.getElementById('kpi-today-expenses').innerText = `$${todayExpenses.toFixed(2)}`;
+
+  // --- 2. CONSULTA DEL PERIODO (FILTRADO O ACUMULADO) ---
+  let queryVentas = db.from('ventas').select('total_venta');
+  let queryDetalles = db.from('detalle_ventas').select('cantidad, costo_unitario, ventas!inner(fecha_hora)');
+  let queryGastos = db.from('gastos_y_mermas').select('monto_total');
+
+  if (startDate && endDate) {
+    const startISO = `${startDate}T00:00:00.000Z`;
+    const endISO = `${endDate}T23:59:59.999Z`;
+
+    queryVentas = queryVentas.gte('fecha_hora', startISO).lte('fecha_hora', endISO);
+    queryDetalles = queryDetalles.gte('ventas.fecha_hora', startISO).lte('ventas.fecha_hora', endISO);
+    queryGastos = queryGastos.gte('fecha', startISO).lte('fecha', endISO);
+
+    document.getElementById('period-title').innerText = `📈 Periodo Filtrado (${startDate} al ${endDate})`;
+  } else {
+    document.getElementById('period-title').innerText = `📈 Acumulado Histórico General`;
+  }
+
+  const { data: ventas } = await queryVentas;
   const ingresosBrutos = ventas ? ventas.reduce((acc, v) => acc + Number(v.total_venta), 0) : 0;
 
-  // 2. Obtener Costo de Mercancía Vendida (COGS)
-  const { data: detalles } = await db.from('detalle_ventas').select('cantidad, costo_unitario');
+  const { data: detalles } = await queryDetalles;
   const cogs = detalles ? detalles.reduce((acc, d) => acc + (d.cantidad * Number(d.costo_unitario)), 0) : 0;
 
-  // 3. Obtener Gastos Operativos y Mermas
-  const { data: gastos } = await db.from('gastos_y_mermas').select('monto_total');
+  const { data: gastos } = await queryGastos;
   const totalGastos = gastos ? gastos.reduce((acc, g) => acc + Number(g.monto_total), 0) : 0;
 
-  // 4. Obtener Valor del Inventario
   const { data: productos } = await db.from('productos').select('stock_actual, costo_compra');
   const valorInventario = productos ? productos.reduce((acc, p) => acc + (p.stock_actual * Number(p.costo_compra)), 0) : 0;
 
-  // Cálculos finales de utilidad
   const costosYGastosTotales = cogs + totalGastos;
   const gananciaNeta = ingresosBrutos - costosYGastosTotales;
 
-  // Actualizar KPIs en interfaz
+  // Actualizar interfaz
   document.getElementById('kpi-ingresos').innerText = `$${ingresosBrutos.toFixed(2)}`;
   document.getElementById('kpi-costos-gastos').innerText = `$${costosYGastosTotales.toFixed(2)}`;
-  document.getElementById('kpi-inventario').innerText = `$${valorInventario.toFixed(2)}`;
   document.getElementById('kpi-ganancia-neta').innerText = `$${gananciaNeta.toFixed(2)}`;
+  document.getElementById('kpi-inventario').innerText = `$${valorInventario.toFixed(2)}`;
 
-  const badge = document.getElementById('kpi-badge-estado');
-  if (gananciaNeta >= 0) {
-    badge.className = "px-3 py-1 bg-green-500/30 text-green-100 rounded-full text-xs font-semibold";
-    badge.innerText = "📈 Negocio Rentable";
-  } else {
-    badge.className = "px-3 py-1 bg-red-500/30 text-red-100 rounded-full text-xs font-semibold";
-    badge.innerText = "📉 En Pérdida";
-  }
+  // --- 3. RENDERIZAR GRÁFICO COMPACTO ---
+  renderCompactChart(ingresosBrutos, costosYGastosTotales, gananciaNeta);
+}
 
-  // Renderizar Gráfico de Barras con Chart.js
+function renderCompactChart(ingresos, costos, ganancia) {
   const ctx = document.getElementById('financialChart').getContext('2d');
   if (financialChartInstance) {
-    financialChartInstance.destroy(); // Destruir gráfico anterior para evitar solapamientos
+    financialChartInstance.destroy();
   }
 
   financialChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Periodo Actual'],
+      labels: ['Consulta'],
       datasets: [
-        {
-          label: 'Ingresos por Ventas',
-          data: [ingresosBrutos],
-          backgroundColor: 'rgba(59, 130, 246, 0.8)',
-          borderRadius: 6
-        },
-        {
-          label: 'Costos y Gastos',
-          data: [costosYGastosTotales],
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-          borderRadius: 6
-        },
-        {
-          label: 'Utilidad Neta',
-          data: [gananciaNeta],
-          backgroundColor: 'rgba(16, 185, 129, 0.8)',
-          borderRadius: 6
-        }
+        { label: 'Ingresos', data: [ingresos], backgroundColor: '#3b82f6', borderRadius: 4 },
+        { label: 'Costos + Gastos', data: [costos], backgroundColor: '#ef4444', borderRadius: 4 },
+        { label: 'Ganancia Neta', data: [ganancia], backgroundColor: '#10b981', borderRadius: 4 }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true
-        }
-      }
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { y: { beginAtZero: true } }
     }
   });
+}
+
+// Botones de filtro
+function applyDateFilter() {
+  const from = document.getElementById('filter-date-from').value;
+  const to = document.getElementById('filter-date-to').value;
+  if (!from || !to) {
+    alert("Por favor selecciona ambas fechas (Desde y Hasta).");
+    return;
+  }
+  loadFinancialSummary(from, to);
+}
+
+function resetDateFilter() {
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value = '';
+  const todayStr = new Date().toISOString().split('T')[0];
+  loadFinancialSummary(todayStr, todayStr);
 }
 
 // Inicializar cargando productos al abrir la página
