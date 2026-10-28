@@ -14,15 +14,31 @@
 <body class="bg-gray-100 font-sans">
 
   <!-- Barra de Navegación -->
-  <nav class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
-    <h1 class="text-xl font-bold">🛒 HiGlow Gestión App</h1>
-    <div class="space-x-4">
-      <button onclick="switchTab('pos')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Punto de Venta (POS)</button>
-      <button onclick="switchTab('inventory')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Inventario</button>
-      <button onclick="switchTab('dashboard')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Finanzas</button>
-      <button onclick="switchTab('admin')" class="hover:bg-blue-700 px-3 py-2 rounded font-medium transition">Administración</button>
+  <nav class="bg-blue-600 text-white px-4 py-3 shadow-md">
+  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+    <!-- Logotipo / Título -->
+    <div class="flex items-center space-x-2">
+      <span class="text-2xl">🛒</span>
+      <h1 class="text-xl font-bold tracking-wide">Minimarket App</h1>
     </div>
-  </nav>
+    
+    <!-- Botones de Navegación Adaptables -->
+    <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto text-center">
+      <button onclick="switchTab('pos')" class="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition">
+        🛍️ POS
+      </button>
+      <button onclick="switchTab('inventory')" class="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition">
+        📦 Inventario
+      </button>
+      <button onclick="switchTab('admin')" class="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition">
+        ⚙️ Admin
+      </button>
+      <button onclick="switchTab('dashboard')" class="bg-blue-700 hover:bg-blue-800 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition">
+        📊 Finanzas
+      </button>
+    </div>
+  </div>
+</nav>
 
   <!-- Contenedor Principal -->
   <main class="p-6 max-w-7xl mx-auto">
